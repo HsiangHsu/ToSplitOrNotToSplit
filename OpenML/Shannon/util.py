@@ -2,11 +2,11 @@ import tensorflow as tf
 import numpy as np
 import scipy as sp
 
-num_neuron = 30
+num_neuron = 50
 lr = 1e-2
 epoch = 1000
 
-def compute_divergence(X1, X0):
+def compute_divergence(X1, X0, X1_test, X0_test):
     dx = X0.shape[1]
     def xavier_init(size):
         in_dim = size[0]
@@ -17,19 +17,22 @@ def compute_divergence(X1, X0):
     G_b1 = tf.Variable(tf.zeros(shape=[num_neuron]), name='G_b1')
     G_W2 = tf.Variable(xavier_init([num_neuron, num_neuron]), name='G_W2')
     G_b2 = tf.Variable(tf.zeros(shape=[num_neuron]), name='G_b2')
-    G_W3 = tf.Variable(xavier_init([num_neuron, num_neuron]), name='G_W3')
-    G_b3 = tf.Variable(tf.zeros(shape=[num_neuron]), name='G_b3')
-    G_W4 = tf.Variable(xavier_init([num_neuron, 1]), name='G_W4')
-    G_b4 = tf.Variable(tf.zeros(shape=[1]), name='G_b4')
-    theta_G = [G_W1, G_b1, G_W2, G_b2, G_W3, G_b3, G_W4, G_b4]
+    G_W3 = tf.Variable(xavier_init([num_neuron, int(num_neuron/2)]), name='G_W3')
+    G_b3 = tf.Variable(tf.zeros(shape=[int(num_neuron/2)]), name='G_b3')
+    G_W4 = tf.Variable(xavier_init([int(num_neuron/2), int(num_neuron/4)]), name='G_W4')
+    G_b4 = tf.Variable(tf.zeros(shape=[int(num_neuron/4)]), name='G_b4')
+    G_W5 = tf.Variable(xavier_init([int(num_neuron/4), 1]), name='G_W5')
+    G_b5 = tf.Variable(tf.zeros(shape=[1]), name='G_b5')
+    theta_G = [G_W1, G_b1, G_W2, G_b2, G_W3, G_b3, G_W4, G_b4, G_W5, G_b5]
 
     def g_approx(data):
         fc1 = tf.nn.relu(tf.matmul(data, G_W1) + G_b1)
         fc2 = tf.nn.relu(tf.matmul(fc1, G_W2) + G_b2)
         fc3 = tf.nn.relu(tf.matmul(fc2, G_W3) + G_b3)
+        fc4 = tf.nn.relu(tf.matmul(fc3, G_W4) + G_b4)
         # fc4 = tf.nn.relu(tf.matmul(fc3, G_W4) + G_b4)
         # g = tf.matmul(fc4, G_W5) + G_b5
-        g = tf.matmul(fc3, G_W4) + G_b4
+        g = tf.matmul(fc4, G_W5) + G_b5
 
         clip_min = np.float32(-.5)
         clip_max = np.float32(.5)
@@ -65,7 +68,8 @@ def compute_divergence(X1, X0):
         # if i % 100 == 0:
         #     print('{}\t {:.8f}'.format(i, -current_loss))
 
+    test_loss = sess.run(TV_loss, feed_dict={data1: X1_test, data2: X0_test})
 
     sess.close()
 
-    return -current_loss
+    return -current_loss, -test_loss
